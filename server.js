@@ -45,7 +45,8 @@ server.post('/messages',
     }
 )
 
-server.get('/messages', async (req, res) =>{
+server.get('/messages', 
+    async (req, res) =>{
     const limit = parseInt(req.query.limit);
     //limit not applied yet!!
     try {
@@ -55,7 +56,18 @@ server.get('/messages', async (req, res) =>{
     } catch {
         res.sendStatus(400);
     }
-})
+    }
+)
 
+server.post('/status', 
+    async (req, res) => {
+        const {user} = req.headers;
+        try{
+            await usersCol.updateOne({name: user}, {$set: {lastStatus: Date.now()}})
+            res.sendStatus(200);
+        } catch {
+            res.sendStatus(404);
+        }
+    })
 
 
