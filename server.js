@@ -50,6 +50,7 @@ server.get('/participants',
 
 server.post('/messages', 
     async (req, res) =>{
+        const {user} = req.headers;
         const time = dayjs().locale('pt-br').format('HH:mm:ss');
         const schema = Joi.object({
             to: Joi.string().required(),
@@ -58,8 +59,22 @@ server.post('/messages',
             from: Joi.string(),
             time: Joi.string()
         })
+        
+        if(req.body.to !== 'Todos'){
+            try{
+                const participants = await (usersCol.find()).toArray();
+                console.log(participants);
+                const {name: test1} = participants.find(participant => participant.name === user);
+                const {name: test2} = participants.find(participant => participant.name === req.body.to);
+                if (!test1 || !test2) throw 'Person does not exist!';
+            } catch (err){
+                console.log(err);
+                res.sendStatus(422);
+                return;
+            }
+        }
         try {
-            const obj = {...req.body, from: req.headers.user, time: time} //Se pa era pra validar o "to"
+            const obj = {...req.body, from: user, time: time} //Se pa era pra validar o "to"
             const value = await schema.validateAsync(obj)
             await messagesCol.insertOne(value);
             res.sendStatus(201);
