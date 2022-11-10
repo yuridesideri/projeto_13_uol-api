@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { client, usersCol, messagesCol } from './database.js';
+import { usersCol, messagesCol } from './database.js';
 import dayjs from "dayjs";
 import Joi from "joi";
 
@@ -50,6 +50,7 @@ server.get('/participants',
 
 server.post('/messages', 
     async (req, res) =>{
+        const time = dayjs().locale('pt-br').format('HH:mm:ss');
         const schema = Joi.object({
             to: Joi.string().required(),
             text: Joi.string().required(),
@@ -57,7 +58,6 @@ server.post('/messages',
             from: Joi.string(),
             time: Joi.string()
         })
-        const time = dayjs().locale('pt-br').format('HH:mm:ss');
         try {
             const obj = {...req.body, from: req.headers.user, time: time} //Se pa era pra validar o "to"
             const value = await schema.validateAsync(obj)
@@ -72,10 +72,9 @@ server.post('/messages',
 
 server.get('/messages', 
     async (req, res) =>{
-    const limit = parseInt(req.query.limit);
-    //limit not applied yet!!
+    const limit = parseInt(req.query.limit) || 0;
     try {
-        const query =  await messagesCol.find().toArray();
+        const query =  (await messagesCol.find().toArray()).slice(-limit);
         res.status(200);
         res.send(query);
     } catch {
@@ -101,12 +100,13 @@ server.post('/status',
 
 const interval = setInterval(handleExpiration, 15000);
 async function handleExpiration () {
+    const time = dayjs().locale('pt-br').format('HH:mm:ss');
     const users = await usersCol.find().toArray();
     users.forEach( async ({lastStatus, name}) =>  {
             if (Date.now() - lastStatus > 10000){
                 try {
                     await usersCol.deleteOne({name: name});
-                    await messagesCol.insertOne({from: name, to: 'Todos', text: 'sai da sala...', type: 'status', time: 'HH:MM:SS'});
+                    await messagesCol.insertOne({from: name, to: 'Todos', text: 'sai da sala...', type: 'status', time: time});
                 } catch {
                     console.log('Unsuccesful user removal!');
                 }
