@@ -22,7 +22,7 @@ server.post('/participants',
 )
 
 server.get('/participants', 
-    async  (req, res) => {
+    async (req, res) => {
         try{
             const users = await usersCol.find().toArray();
             res.statusCode = 201;
@@ -68,6 +68,22 @@ server.post('/status',
         } catch {
             res.sendStatus(404);
         }
-    })
+    }
+)
 
 
+const interval = setInterval(handleExpiration, 15000);
+async function handleExpiration () {
+    const users = await usersCol.find().toArray();
+    users.forEach( async ({lastStatus, name}) =>  {
+            if (Date.now() - lastStatus > 10000){
+                try {
+                    await usersCol.deleteOne({name: name});
+                    await messagesCol.insertOne({from: name, to: 'Todos', text: 'sai da sala...', type: 'status', time: 'HH:MM:SS'});
+                } catch {
+                    console.log('Unsuccesful user removal!');
+                }
+            }
+        }
+    )
+}
