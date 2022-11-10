@@ -24,7 +24,6 @@ server.post('/participants',
             await messagesCol.insertOne({from: validated.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: time})
             res.sendStatus(201);
         } catch (err) {
-            console.log(err.details);
             if (err === 'User already logged in'){
                 res.sendStatus(409)
                 console.log('User already logged in');
@@ -51,12 +50,22 @@ server.get('/participants',
 
 server.post('/messages', 
     async (req, res) =>{
+        const schema = Joi.object({
+            to: Joi.string().required(),
+            text: Joi.string().required(),
+            type: Joi.any().valid('private_message','message').required(),
+            from: Joi.string(),
+            time: Joi.string()
+        })
         const time = dayjs().locale('pt-br').format('HH:mm:ss');
         try {
-            messagesCol.insertOne({...req.body, from: req.headers.user, time: time})
-            res.sendStatus(200);
-        } catch {
-            res.sendStatus(400);
+            const obj = {...req.body, from: req.headers.user, time: time} //Se pa era pra validar o "to"
+            const value = await schema.validateAsync(obj)
+            await messagesCol.insertOne(value);
+            res.sendStatus(201);
+        } catch (err) {
+            console.log(err);
+            res.sendStatus(422);
         }
     }
 )
