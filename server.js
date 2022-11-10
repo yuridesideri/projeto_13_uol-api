@@ -88,9 +88,11 @@ server.post('/status',
     async (req, res) => {
         const {user} = req.headers;
         try{
-            await usersCol.updateOne({name: user}, {$set: {lastStatus: Date.now()}})
+            const {matchedCount} = await usersCol.updateOne({name: user}, {$set: {lastStatus: Date.now()}})
+            if (matchedCount === 0) throw 'Not a User';
             res.sendStatus(200);
-        } catch {
+        } catch (err) {
+            console.log(err)
             res.sendStatus(404);
         }
     }
