@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { client, usersCol, messagesCol } from './database.js';
 import dayjs from "dayjs";
+import Joi from "joi";
 
 
 const server = express();
@@ -9,14 +10,29 @@ server.listen(5000);
 server.use(cors());
 server.use(express.json());
 
-// 
+
 server.post('/participants', 
     async (req, res) => {
+        const schema = Joi.object({
+            name: Joi.string().required(),
+        })
+        const time = dayjs().locale('pt-br').format('HH:mm:ss');
         try {
-            await usersCol.insertOne({...req.body, lastStatus: Date.now()})
-            res.sendStatus(200);
-        } catch{
-            res.sendStatus(400);
+            if ((await usersCol.find().toArray()).find(({name}) => name === req.body.name)) throw 'User already logged in';
+            const validated = await schema.validateAsync({...req.body})
+            await usersCol.insertOne({...validated, lastStatus: Date.now()})
+            await messagesCol.insertOne({from: validated.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: time})
+            res.sendStatus(201);
+        } catch (err) {
+            console.log(err.details);
+            if (err === 'User already logged in'){
+                res.sendStatus(409)
+                console.log('User already logged in');
+            }
+            else if (err.details[0].type === 'string.empty'){
+                res.sendStatus(422)
+            }
+            else res.sendStatus(422);
         }
     }
 )
